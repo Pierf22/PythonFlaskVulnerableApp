@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -120,7 +123,7 @@ jobs:
     needs: [test, sast, sca]
     continue-on-error: true
     container:
-      image: owasp/zap2docker-stable
+      image: ghcr.io/zaproxy/zaproxy:stable
       options: --user root -v ${{ github.workspace }}:/zap/wrk/:rw
     steps:
       - name: Run ZAP Baseline Scan
