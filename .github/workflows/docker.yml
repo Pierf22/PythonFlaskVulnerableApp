@@ -174,9 +174,9 @@ jobs:
           faraday-cli auth -f "$FARADAY_HOST" -u "$FARADAY_USERNAME" -p "$FARADAY_PASSWORD"
           faraday-cli workspace create "$FARADAY_WORKSPACE" || true
           faraday-cli workspace select "$FARADAY_WORKSPACE"
-          faraday-cli tool report sast-report/semgrep.json
-          faraday-cli tool report sca-report/trivy-fs.sarif
-          faraday-cli tool report dast-report/zap-report.xml
+          faraday-cli tool report sast-report/semgrep.json --vuln-tag SAST --host-tag SAST
+          faraday-cli tool report sca-report/trivy-fs.sarif --vuln-tag SCA --host-tag SCA
+          faraday-cli tool report dast-report/zap-report.xml --vuln-tag DAST --host-tag DAST
 
   build-and-push:
     runs-on: ubuntu-latest
