@@ -178,9 +178,50 @@ jobs:
           faraday-cli tool report sca-report/trivy-fs.sarif --vuln-tag SCA --host-tag SCA
           faraday-cli tool report dast-report/zap-report.xml --vuln-tag DAST --host-tag DAST
 
+  # ───────────────────────────────────────────── Security Gate
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    needs: upload-to-faraday
+    container:
+      image: python:3.9
+      options: --user root
+    env:
+      MAX_CRITICAL: 0
+      MAX_HIGH: 5
+    steps:
+      - name: Check vulnerability thresholds
+        env:
+          FARADAY_HOST: ${{ secrets.FARADAY_HOST }}
+          FARADAY_USERNAME: ${{ secrets.FARADAY_USERNAME }}
+          FARADAY_PASSWORD: ${{ secrets.FARADAY_PASSWORD }}
+          FARADAY_WORKSPACE: ${{ secrets.FARADAY_WORKSPACE }}
+        run: |
+          pip install faraday-cli -q
+          faraday-cli auth -f "$FARADAY_HOST" -u "$FARADAY_USERNAME" -p "$FARADAY_PASSWORD"
+          faraday-cli workspace select "$FARADAY_WORKSPACE"
+
+          CRITICAL=$(faraday-cli vuln list -w "$FARADAY_WORKSPACE" --severity critical -j | \
+            python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
+          HIGH=$(faraday-cli vuln list -w "$FARADAY_WORKSPACE" --severity high -j | \
+            python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
+
+          echo "Critical: $CRITICAL (max: $MAX_CRITICAL)"
+          echo "High:     $HIGH (max: $MAX_HIGH)"
+
+          if [ "$CRITICAL" -gt "$MAX_CRITICAL" ]; then
+            echo "Security gate FAILED: $CRITICAL critical vulnerabilities exceed threshold ($MAX_CRITICAL)"
+            exit 1
+          fi
+          if [ "$HIGH" -gt "$MAX_HIGH" ]; then
+            echo "Security gate FAILED: $HIGH high vulnerabilities exceed threshold ($MAX_HIGH)"
+            exit 1
+          fi
+          echo "Security gate PASSED"
+
   build-and-push:
     runs-on: ubuntu-latest
-    needs: [test, sast, sca]
+    needs: [test, sast, sca, security-gate]
     steps:
       - name: pass
         run: echo "build-and-push passed"
