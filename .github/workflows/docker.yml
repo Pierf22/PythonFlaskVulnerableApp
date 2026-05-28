@@ -187,7 +187,7 @@ jobs:
           FARADAY_HOST: ${{ secrets.FARADAY_HOST }}
           FARADAY_USERNAME: ${{ secrets.FARADAY_USERNAME }}
           FARADAY_PASSWORD: ${{ secrets.FARADAY_PASSWORD }}
-          FARADAY_WORKSPACE: ${{ secrets.FARADAY_WORKSPACE }}
+          FARADAY_WORKSPACE: ${{ secrets.FARADAY_WORKSPACE }}-${{ github.ref_name }}
           DAST_TAG: ${{ github.ref == 'refs/heads/security-test' && 'DAST-ACTIVE' || 'DAST' }}
         run: |
           pip install faraday-cli
@@ -220,7 +220,7 @@ jobs:
           FARADAY_HOST: ${{ secrets.FARADAY_HOST }}
           FARADAY_USERNAME: ${{ secrets.FARADAY_USERNAME }}
           FARADAY_PASSWORD: ${{ secrets.FARADAY_PASSWORD }}
-          FARADAY_WORKSPACE: ${{ secrets.FARADAY_WORKSPACE }}
+          FARADAY_WORKSPACE: ${{ secrets.FARADAY_WORKSPACE }}-${{ github.ref_name }}
         run: |
           pip install faraday-cli -q
           faraday-cli auth -f "$FARADAY_HOST" -u "$FARADAY_USERNAME" -p "$FARADAY_PASSWORD"
