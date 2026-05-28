@@ -90,6 +90,9 @@ jobs:
     name: Upload to Faraday
     runs-on: ubuntu-latest
     needs: [semgrep-sast, semgrep-sca]
+    container:
+      image: python:3.9
+      options: --user root
     steps:
       - name: Download SAST report artifact
         uses: actions/download-artifact@v4
@@ -104,13 +107,13 @@ jobs:
           path: sca-report
 
       - name: Upload Reports to Faraday
-        uses: infobyte/gha-faraday-report-uploader@main
-        with:
-          host: ${{ secrets.FARADAY_HOST }}
-          username: ${{ secrets.FARADAY_USERNAME }}
-          password: ${{ secrets.FARADAY_PASSWORD }}
-          workspace: ${{ secrets.FARADAY_WORKSPACE }}
-          files: sast-report/semgrep_report.json sca-report/sca_report.json
+        run: |
+          pip install faraday-cli
+          faraday-cli auth -f ${{ secrets.FARADAY_HOST }} -u ${{ secrets.FARADAY_USERNAME }} -p ${{ secrets.FARADAY_PASSWORD }}
+          faraday-cli workspace create ${{ secrets.FARADAY_WORKSPACE }} || true
+          faraday-cli workspace select ${{ secrets.FARADAY_WORKSPACE }}
+          faraday-cli tool report sast-report/semgrep_report.json
+          faraday-cli tool report sca-report/sca_report.json
 
   dast:
     runs-on: ubuntu-latest
