@@ -113,10 +113,31 @@ jobs:
           path: semgrep.json
           retention-days: 5
 
+  # ───────────────────────────────────────────── DAST
+  dast:
+    name: DAST - OWASP ZAP Baseline
+    runs-on: ubuntu-latest
+    needs: [test, sast, sca]
+    continue-on-error: true
+    container:
+      image: owasp/zap2docker-stable
+      options: --user root -v ${{ github.workspace }}:/zap/wrk/:rw
+    steps:
+      - name: Run ZAP Baseline Scan
+        run: zap-baseline.py -t ${{ secrets.APP_URL }} -x zap-report.xml || echo 0
+
+      - name: Upload ZAP report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: /zap/wrk/zap-report.xml
+          retention-days: 5
+
   upload-to-faraday:
     name: Upload to Faraday
     runs-on: ubuntu-latest
-    needs: [sast, sca]
+    needs: [sast, sca, dast]
     container:
       image: python:3.9
       options: --user root
@@ -133,6 +154,12 @@ jobs:
           name: trivy-fs-sarif
           path: sca-report
 
+      - name: Download DAST report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: zap-report
+          path: dast-report
+
       - name: Upload Reports to Faraday
         env:
           FARADAY_HOST: ${{ secrets.FARADAY_HOST }}
@@ -146,13 +173,7 @@ jobs:
           faraday-cli workspace select "$FARADAY_WORKSPACE"
           faraday-cli tool report sast-report/semgrep.json
           faraday-cli tool report sca-report/trivy-fs.sarif
-
-  dast:
-    runs-on: ubuntu-latest
-    needs: [test, sast, sca]
-    steps:
-      - name: pass
-        run: echo "dast passed"
+          faraday-cli tool report dast-report/zap-report.xml
 
   build-and-push:
     runs-on: ubuntu-latest
