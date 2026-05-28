@@ -2,7 +2,7 @@ name: Build Docker Image
 
 on:
   push:
-    branches: [master]
+    branches: [master, security-test]
   pull_request:
     branches: [master]
 
@@ -118,7 +118,7 @@ jobs:
 
   # ───────────────────────────────────────────── DAST
   dast:
-    name: DAST - OWASP ZAP Baseline
+    name: DAST - OWASP ZAP
     runs-on: ubuntu-latest
     needs: [test, sast, sca]
     continue-on-error: true
@@ -126,8 +126,13 @@ jobs:
       image: ghcr.io/zaproxy/zaproxy:stable
       options: --user root -v ${{ github.workspace }}:/zap/wrk/:rw
     steps:
-      - name: Run ZAP Baseline Scan
+      - name: Run ZAP Baseline Scan (master)
+        if: github.ref == 'refs/heads/master'
         run: zap-baseline.py -t ${{ secrets.APP_URL }} -x zap-report.xml || echo 0
+
+      - name: Run ZAP Active Scan (security-test)
+        if: github.ref == 'refs/heads/security-test'
+        run: zap-full-scan.py -t ${{ secrets.APP_URL }} -x zap-report.xml || echo 0
 
       - name: Upload ZAP report artifact
         if: always()
@@ -169,6 +174,7 @@ jobs:
           FARADAY_USERNAME: ${{ secrets.FARADAY_USERNAME }}
           FARADAY_PASSWORD: ${{ secrets.FARADAY_PASSWORD }}
           FARADAY_WORKSPACE: ${{ secrets.FARADAY_WORKSPACE }}
+          DAST_TAG: ${{ github.ref == 'refs/heads/security-test' && 'DAST-ACTIVE' || 'DAST' }}
         run: |
           pip install faraday-cli
           faraday-cli auth -f "$FARADAY_HOST" -u "$FARADAY_USERNAME" -p "$FARADAY_PASSWORD"
@@ -176,13 +182,14 @@ jobs:
           faraday-cli workspace select "$FARADAY_WORKSPACE"
           faraday-cli tool report sast-report/semgrep.json --vuln-tag SAST --host-tag SAST
           faraday-cli tool report sca-report/trivy-fs.sarif --vuln-tag SCA --host-tag SCA
-          faraday-cli tool report dast-report/zap-report.xml --vuln-tag DAST --host-tag DAST
+          faraday-cli tool report dast-report/zap-report.xml --vuln-tag "$DAST_TAG" --host-tag "$DAST_TAG"
 
   # ───────────────────────────────────────────── Security Gate
   security-gate:
     name: Security Gate
     runs-on: ubuntu-latest
     needs: upload-to-faraday
+    if: github.ref == 'refs/heads/master'
     container:
       image: python:3.9
       options: --user root
@@ -222,6 +229,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     needs: [test, sast, sca, security-gate]
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: pass
         run: echo "build-and-push passed"
@@ -229,6 +237,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: pass
         run: echo "deploy passed"
