@@ -107,11 +107,16 @@ jobs:
           path: sca-report
 
       - name: Upload Reports to Faraday
+        env:
+          FARADAY_HOST: ${{ secrets.FARADAY_HOST }}
+          FARADAY_USERNAME: ${{ secrets.FARADAY_USERNAME }}
+          FARADAY_PASSWORD: ${{ secrets.FARADAY_PASSWORD }}
+          FARADAY_WORKSPACE: ${{ secrets.FARADAY_WORKSPACE }}
         run: |
           pip install faraday-cli
-          faraday-cli auth -f ${{ secrets.FARADAY_HOST }} -u ${{ secrets.FARADAY_USERNAME }} -p ${{ secrets.FARADAY_PASSWORD }}
-          faraday-cli workspace create ${{ secrets.FARADAY_WORKSPACE }} || true
-          faraday-cli workspace select ${{ secrets.FARADAY_WORKSPACE }}
+          faraday-cli auth -f "$FARADAY_HOST" -u "$FARADAY_USERNAME" -p "$FARADAY_PASSWORD"
+          faraday-cli workspace create "$FARADAY_WORKSPACE" || true
+          faraday-cli workspace select "$FARADAY_WORKSPACE"
           faraday-cli tool report sast-report/semgrep_report.json
           faraday-cli tool report sca-report/sca_report.json
 
