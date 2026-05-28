@@ -202,9 +202,9 @@ jobs:
           faraday-cli workspace select "$FARADAY_WORKSPACE"
 
           CRITICAL=$(faraday-cli vuln list -w "$FARADAY_WORKSPACE" --severity critical -j | \
-            python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
+            python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
           HIGH=$(faraday-cli vuln list -w "$FARADAY_WORKSPACE" --severity high -j | \
-            python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
+            python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
 
           echo "Critical: $CRITICAL (max: $MAX_CRITICAL)"
           echo "High:     $HIGH (max: $MAX_HIGH)"
